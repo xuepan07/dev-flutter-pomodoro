@@ -108,7 +108,7 @@ class CircularProgress extends StatelessWidget {
                     formattedTime,
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 56,
+                      fontSize: 44,
                       fontWeight: FontWeight.w200,
                       letterSpacing: 4,
                     ),

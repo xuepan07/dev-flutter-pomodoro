@@ -25,6 +25,7 @@ class _TimerScreenState extends State<TimerScreen>
   @override
   void initState() {
     super.initState();
+    _pomodoroTimer.loadSettings();
     _pomodoroTimer.loadLogs();
     _pomodoroTimer.addListener(_onTimerChanged);
     _pomodoroTimer.onLongBreakStarted = _showLongBreakDialog;
@@ -147,6 +148,132 @@ class _TimerScreenState extends State<TimerScreen>
     );
   }
 
+  void _showSettingsDialog() {
+    int workMinutes = _pomodoroTimer.workDuration ~/ 60;
+    int breakMinutes = _pomodoroTimer.shortBreakDuration ~/ 60;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: const Color(0xFF2C3E50),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text(
+            'Timer Settings',
+            style: TextStyle(color: Colors.white, fontSize: 20),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Focus Time Setting
+                const Text(
+                  'Focus Time (10-50 min, 5-min steps)',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$workMinutes min',
+                        style: const TextStyle(
+                          color: Color(0xFFE74C3C),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Slider(
+                        value: workMinutes.toDouble(),
+                        min: 10,
+                        max: 50,
+                        divisions: 8, // (50-10)/5 = 8 steps
+                        label: '$workMinutes min',
+                        activeColor: const Color(0xFFE74C3C),
+                        inactiveColor: Colors.white24,
+                        onChanged: (double value) {
+                          setState(() {
+                            workMinutes = value.toInt();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+                // Break Time Setting
+                const Text(
+                  'Break Time (1-5 min, 1-min steps)',
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        '$breakMinutes min',
+                        style: const TextStyle(
+                          color: Color(0xFF27AE60),
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Slider(
+                        value: breakMinutes.toDouble(),
+                        min: 1,
+                        max: 5,
+                        divisions: 4, // (5-1)/1 = 4 steps
+                        label: '$breakMinutes min',
+                        activeColor: const Color(0xFF27AE60),
+                        inactiveColor: Colors.white24,
+                        onChanged: (double value) {
+                          setState(() {
+                            breakMinutes = value.toInt();
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2980B9),
+              ),
+              onPressed: () {
+                _pomodoroTimer.setWorkDuration(workMinutes);
+                _pomodoroTimer.setShortBreakDuration(breakMinutes);
+                Navigator.pop(ctx);
+              },
+              child: const Text('Apply'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showClearLogsDialog() {
     showDialog(
       context: context,
@@ -186,6 +313,29 @@ class _TimerScreenState extends State<TimerScreen>
     final stateColor = _pomodoroTimer.stateColor;
     return Scaffold(
       backgroundColor: const Color(0xFF1A1A2E),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF1A1A2E),
+        elevation: 0,
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Center(
+              child: ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF34495E),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                onPressed: _showSettingsDialog,
+                icon: const Icon(Icons.settings, size: 18),
+                label: const Text('Change timer'),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: SafeArea(
         child: Column(
           children: [
@@ -220,7 +370,7 @@ class _TimerScreenState extends State<TimerScreen>
               ),
             ),
 
-            const SizedBox(height: 8),
+            const SizedBox(height: 20),
 
             // ----- State Label -----
             AnimatedSwitcher(
@@ -236,6 +386,8 @@ class _TimerScreenState extends State<TimerScreen>
               ),
             ),
 
+            const SizedBox(height: 16),
+
             // ----- Circular Progress Timer -----
             Expanded(
               flex: 3,
@@ -248,6 +400,8 @@ class _TimerScreenState extends State<TimerScreen>
                 pulseAnimation: _pulseAnimation,
               ),
             ),
+
+            const SizedBox(height: 24),
 
             // ----- Control Buttons -----
             ControlButtons(

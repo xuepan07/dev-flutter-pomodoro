@@ -105,7 +105,7 @@ class ControlButtons extends StatelessWidget {
             label: isRunning ? 'Pause' : 'Start',
             color: stateColor,
             onTap: onStartPause,
-            isLarge: true,
+            isLarge: false,
           ),
           // Skip Break
           ControlButton(

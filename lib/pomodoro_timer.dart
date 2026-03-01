@@ -43,20 +43,30 @@ class PomodoroLog {
 // ============================================================
 class PomodoroTimer extends ChangeNotifier {
   // ----- Timer Settings (seconds) -----
-  static const int workDuration = 25 * 60; // 25分
-  static const int shortBreakDuration = 5 * 60; // 5分
   static const int longBreakDuration = 20 * 60; // 20分
   static const int setsPerRound = 4;
+  
+  // ----- Configurable Durations -----
+  late int _workDuration; // 10-50分（5分刻み）
+  late int _shortBreakDuration; // 1-5分（1分刻み）
 
   // ----- State -----
   TimerState _timerState = TimerState.idle;
-  int _remainingSeconds = workDuration;
-  int _totalDuration = workDuration;
+  late int _remainingSeconds;
+  late int _totalDuration;
   int _completedSets = 0;
   bool _isRunning = false;
   Timer? _timer;
   String _taskName = 'Task Name';  //'タスク名';
   List<PomodoroLog> _logs = [];
+  
+  // Constructor
+  PomodoroTimer() {
+    _workDuration = 25 * 60; // Default: 25分
+    _shortBreakDuration = 5 * 60; // Default: 5分
+    _remainingSeconds = _workDuration;
+    _totalDuration = _workDuration;
+  }
 
   // ----- Audio -----
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -69,6 +79,8 @@ class PomodoroTimer extends ChangeNotifier {
   bool get isRunning => _isRunning;
   String get taskName => _taskName;
   List<PomodoroLog> get logs => _logs;
+  int get workDuration => _workDuration;
+  int get shortBreakDuration => _shortBreakDuration;
 
   double get progress {
     if (_totalDuration == 0) return 0;
@@ -114,6 +126,21 @@ class PomodoroTimer extends ChangeNotifier {
   // ============================================================
   // Persistence (SharedPreferences)
   // ============================================================
+  Future<void> loadSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    _workDuration = prefs.getInt('work_duration') ?? (25 * 60);
+    _shortBreakDuration = prefs.getInt('short_break_duration') ?? (5 * 60);
+    _remainingSeconds = _workDuration;
+    _totalDuration = _workDuration;
+    notifyListeners();
+  }
+  
+  Future<void> _saveSettings() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('work_duration', _workDuration);
+    await prefs.setInt('short_break_duration', _shortBreakDuration);
+  }
+  
   Future<void> loadLogs() async {
     final prefs = await SharedPreferences.getInstance();
     final logsJson = prefs.getStringList('pomodoro_logs') ?? [];
@@ -141,12 +168,36 @@ class PomodoroTimer extends ChangeNotifier {
   }
 
   // ============================================================
-  // Task Name
+  // Task Name & Settings
   // ============================================================
   void setTaskName(String name) {
     //_taskName = name.isEmpty ? 'タスク名' : name;
     _taskName = name.isEmpty ? 'Task Name' : name;
     notifyListeners();
+  }
+  
+  /// Set work duration (集中時間を設定: 10-50分を5分刻み)
+  void setWorkDuration(int minutes) {
+    if (minutes >= 10 && minutes <= 50 && minutes % 5 == 0) {
+      _workDuration = minutes * 60;
+      _saveSettings();
+      
+      // アイドル状態のときは画面表示も更新する
+      if (_timerState == TimerState.idle) {
+        _remainingSeconds = _workDuration;
+        _totalDuration = _workDuration;
+      }
+      notifyListeners();
+    }
+  }
+  
+  /// Set short break duration (休憩時間を設定: 1-5分を1分刻み)
+  void setShortBreakDuration(int minutes) {
+    if (minutes >= 1 && minutes <= 5) {
+      _shortBreakDuration = minutes * 60;
+      _saveSettings();
+      notifyListeners();
+    }
   }
 
   // ============================================================
@@ -160,8 +211,8 @@ class PomodoroTimer extends ChangeNotifier {
     _isRunning = true;
     if (_timerState == TimerState.idle) {
       _timerState = TimerState.working;
-      _remainingSeconds = workDuration;
-      _totalDuration = workDuration;
+      _remainingSeconds = _workDuration;
+      _totalDuration = _workDuration;
     }
     notifyListeners();
 
@@ -184,8 +235,8 @@ class PomodoroTimer extends ChangeNotifier {
   void resetTimer() {
     _timer?.cancel();
     _timerState = TimerState.idle;
-    _remainingSeconds = workDuration;
-    _totalDuration = workDuration;
+    _remainingSeconds = _workDuration;
+    _totalDuration = _workDuration;
     _completedSets = 0;
     _isRunning = false;
     notifyListeners();
@@ -213,8 +264,8 @@ class PomodoroTimer extends ChangeNotifier {
         onLongBreakStarted?.call();
       } else {
         _timerState = TimerState.shortBreak;
-        _remainingSeconds = shortBreakDuration;
-        _totalDuration = shortBreakDuration;
+        _remainingSeconds = _shortBreakDuration;
+        _totalDuration = _shortBreakDuration;
         notifyListeners();
       }
       // 休憩タイマーを自動開始
@@ -227,8 +278,8 @@ class PomodoroTimer extends ChangeNotifier {
         _completedSets = 0;
       }
       _timerState = TimerState.working;
-      _remainingSeconds = workDuration;
-      _totalDuration = workDuration;
+      _remainingSeconds = _workDuration;
+      _totalDuration = _workDuration;
       notifyListeners();
       Future.delayed(const Duration(milliseconds: 500), () {
         if (!_isRunning) startTimer();
@@ -244,8 +295,8 @@ class PomodoroTimer extends ChangeNotifier {
       _completedSets = 0;
     }
     _timerState = TimerState.working;
-    _remainingSeconds = workDuration;
-    _totalDuration = workDuration;
+    _remainingSeconds = _workDuration;
+    _totalDuration = _workDuration;
     notifyListeners();
     startTimer();
   }
